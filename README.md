@@ -1,4 +1,4 @@
-# Project 1 — FPGA-Based Quantum Gate Pulse Sequencer
+# FPGA-Based Quantum Gate Pulse Sequencer
 
 A fully synthesisable Verilog design that emulates an Arbitrary Waveform Generator (AWG)
 for superconducting qubit control. The sequencer reads a programmed gate list and plays
