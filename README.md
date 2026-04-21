@@ -169,15 +169,38 @@ Different gates are encoded by rotating the IQ frame:
 
 ---
 
-## Expected Simulation Results
+## Simulation Results
 
-After running the testbench and plotting:
+### DRAG Pulse Envelopes (Python-generated)
 
-- **X gate:** Gaussian-DRAG envelope on I channel; derivative notch on Q channel; 0° carrier
-- **Y gate:** Same envelope shape, but 90° rotated — appears predominantly on Q channel
-- **X/2 gate:** Identical shape to X, but half the number of active samples (shorter pulse)
-- **H gate:** Mixed I and Q at 45°, intermediate amplitude
-- **IQ phase portrait:** X traces along I axis, Y along Q axis, H at 45° — clearly distinguishable
+![DRAG Pulse Envelopes](outputs/drag_pulses.png)
+
+*Pre-computed DRAG I/Q envelopes for all 4 gate types. The Q channel carries the derivative term that cancels leakage to |2⟩.*
+
+### Gate Sequence A: X → Y → X/2 → H → NOP
+
+![Sequence A Waveform](sim_outputs/sim_functional_overview_Seq_A.png)
+
+*Full I/Q output waveform from the Python behavioral simulator. Each gate occupies 256 clock cycles (~64 ns at 4 GHz effective sample rate).*
+
+### Sequence B: CPMG-4 Dynamical Decoupling
+
+![CPMG-4 Waveform](sim_outputs/sim_functional_overview_Seq_B_CPMG-4.png)
+
+*CPMG-4 sequence — X/2 → X×4 → X/2 — demonstrating the FSM repeat counter. The X gate plays 4 consecutive times (1024 active cycles) from a single 8-bit instruction word.*
+
+### IQ Phase Portrait — Sequence A
+
+![IQ Scatter Sequence A](sim_outputs/sim_iq_scatter_Seq_A.png)
+
+*IQ trajectory plot. X gate traces along I axis, Y along Q axis, H at 45° — confirming correct SSB modulator rotation for each gate.*
+
+**Key results at a glance:**
+- **X gate:** Gaussian-DRAG envelope on I channel; derivative notch on Q; 0° carrier
+- **Y gate:** 90° rotated — appears predominantly on Q channel
+- **X/2 gate:** Half amplitude vs X (π/2 pulse)
+- **H gate:** Mixed I and Q at 45°
+- **CPMG-4:** 4× repeat loop from single instruction → 1024 active cycles confirmed
 
 ---
 

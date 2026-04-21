@@ -6,10 +6,10 @@ __pycache__/
 venv/
 .venv/
 
-# Simulation outputs (generated — not source)
+# Simulation outputs — keep images (shown on GitHub), exclude raw data
 sim_outputs/*.csv
-sim_outputs/*.png
-outputs/*.png
+# sim_outputs/*.png  ← tracked intentionally for GitHub portfolio
+# outputs/*.png      ← tracked intentionally for GitHub portfolio
 
 # Vivado project files (large, generated)
 *.jou
