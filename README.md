@@ -4,9 +4,15 @@ A fully synthesisable Verilog design that emulates an Arbitrary Waveform Generat
 for superconducting qubit control. The sequencer reads a programmed gate list and plays
 back pre-computed DRAG-shaped microwave pulses at precise nanosecond timing.
 
-Extended in v2 to support a **two-qubit ISA** with cross-resonance CNOT/CZ, an
-**AXI4-Lite runtime configuration interface**, and a **Python DRAG gate error simulator**
+Extended in **v2** to support a two-qubit ISA with cross-resonance CNOT/CZ, an
+AXI4-Lite runtime configuration interface, and a Python DRAG gate error simulator
 that quantifies leakage to the transmon |2⟩ state as a function of the DRAG β parameter.
+
+Extended in **v3** with two additional physics modules:
+- **ZZ coupling & CR gate fidelity** — analytic ZZ interaction simulation, 2D fidelity
+  heatmap, and AC-Stark cancellation tone analysis
+- **GRAPE pulse optimisation** — gradient-ascent control of a 3-level transmon X gate;
+  Gaussian → DRAG → GRAPE leakage suppression hierarchy
 
 ## What This Demonstrates
 
@@ -47,7 +53,9 @@ Project1_FPGA_PulseSequencer/
 ├── python/
 │   ├── generate_pulse_rom.py   # DRAG pulse math → .mem hex files + plots
 │   ├── plot_sim_output.py      # Parse XSim CSV → waveform/phase-portrait plots
-│   └── bloch_error_sim.py      # 3-level transmon ODE: leakage vs DRAG β ★
+│   ├── bloch_error_sim.py      # 3-level transmon ODE: leakage vs DRAG β ★ v2
+│   ├── zz_coupling_cr_fidelity.py  # ZZ interaction + CR gate fidelity model ★ v3
+│   └── pulse_envelope_opt.py   # GRAPE-lite: Gaussian → DRAG → GRAPE optimisation ★ v3
 ├── mem_files/
 │   ├── drag_x_i.mem   drag_x_q.mem
 │   ├── drag_y_i.mem   drag_y_q.mem
@@ -60,12 +68,15 @@ Project1_FPGA_PulseSequencer/
 │   ├── iq_per_gate.png          # Zoomed per-gate waveforms
 │   └── iq_phase_portrait.png    # IQ trajectory plot
 ├── outputs/
-│   ├── gate_error_vs_beta.png  # DRAG β sweep: leakage, P1, phase error ★
-│   └── bloch_trajectory.png    # Bloch sphere: with vs without DRAG ★
+│   ├── gate_error_vs_beta.png  # DRAG β sweep: leakage, P1, phase error ★ v2
+│   ├── bloch_trajectory.png    # Bloch sphere: with vs without DRAG ★ v2
+│   ├── 11_zz_coupling.png      # ZZ coupling strength vs detuning ★ v3
+│   ├── 12_cr_gate_fidelity.png # CR gate fidelity: heatmap + detuning sweep ★ v3
+│   └── 13_grape_optimisation.png  # GRAPE: convergence + pulse shape + robustness ★ v3
 └── README.md
 ```
 
-★ New in v2
+★ v2 / v3 = new in that version
 
 ---
 
@@ -293,3 +304,75 @@ Right: optimal DRAG pulse — clean arc from |0⟩ to |1⟩.*
 1. Motzoi F. et al., *Simple Pulses for Elimination of Leakage in Weakly Nonlinear Qubits*, PRL **103**, 110501 (2009)
 2. Krantz P. et al., *A quantum engineer's guide to superconducting qubits*, Appl. Phys. Rev. **6**, 021318 (2019)
 3. Xilinx UG900 — *Vivado Design Suite User Guide: Logic Simulation*
+4. Rigetti Computing, *ZZ Interaction in Superconducting Qubits* (internal note, 2020)
+5. Sheldon S. et al., *Procedure for Systematically Tuning Up Cross-Resonance Gates*, PRA **93**, 060302(R) (2016)
+6. Khaneja N. et al., *Optimal Control of Coupled Spin Dynamics*, J. Magn. Reson. **172**, 296 (2005) — GRAPE
+7. Jurcevic P. et al., *Demonstration of quantum volume 64 on a superconducting quantum computing system*, PRL **127**, 160501 (2021)
+
+---
+
+### ZZ Coupling & CR Gate Fidelity (v3)
+
+![ZZ Coupling](outputs/11_zz_coupling.png)
+
+*Four-panel ZZ interaction analysis. Top-left: |ξ_ZZ| vs qubit–qubit detuning Δ on linear scale
+(g = 20 and 50 MHz). Top-right: log scale. Bottom-left: 2D CR gate fidelity heatmap — fidelity
+drops sharply above ξ_ZZ ≈ 1 MHz. Bottom-right: AC-Stark cancellation tone gains ~1.5 pp at Δ = 700 MHz.*
+
+![CR Gate Fidelity](outputs/12_cr_gate_fidelity.png)
+
+*Cross-resonance gate fidelity heatmap (T_gate vs ξ_ZZ) and detuning sweep for g = 20 MHz.*
+
+**Key results:**
+
+| Parameter | Value |
+|---|---|
+| ZZ model | ξ_ZZ = −2g²α / [Δ(Δ+α)],  α = −200 MHz |
+| ξ_ZZ at g=20 MHz, Δ=500 MHz | 1.07 MHz |
+| ξ_ZZ at g=50 MHz, Δ=300 MHz | 33 MHz |
+| CR fidelity at ξ_ZZ = 0 | 100% |
+| CR fidelity at ξ_ZZ = 2 MHz, T=200 ns | 80% |
+| Best F (detuning sweep, g=20) | 99.02% at Δ = 700 MHz (with AC cancellation) |
+| ZZ budget for <0.1% gate error | ξ_ZZ < 50 kHz |
+
+**CR gate Hamiltonian:**
+```
+H_CR = (Ω(t)/2) ZX + (ξ_ZZ/4) ZZ + ε_I · IX   (parasitic, small)
+```
+
+---
+
+### GRAPE Pulse Optimisation (v3)
+
+![GRAPE Optimisation](outputs/13_grape_optimisation.png)
+
+*Six-panel GRAPE analysis: (top-left) convergence of infidelity 1−F on log scale — GRAPE
+reaches 99.88% from a 77.8% warm start; (top-centre) optimised vs Gaussian vs DRAG pulse
+envelopes; (top-right) leakage P(|2⟩) suppression history; (bottom-left) fidelity vs gate
+duration for all three strategies; (bottom-centre) leakage vs gate duration (log scale);
+(bottom-right) robustness vs qubit frequency offset.*
+
+**Key results:**
+
+| Metric | Gaussian | DRAG | GRAPE |
+|---|---|---|---|
+| Gate fidelity (T=20 ns) | 96.91% | 78.03% | **99.88%** |
+| Leakage P(|2⟩) | 0.0063% | 0.1465% | **0.0033%** |
+| Leakage suppression vs Gaussian | 1× | — | **1.9×** |
+| Robustness ±1% BW | ±1.0 MHz | ±0.5 MHz | **±3.0 MHz** |
+
+**Physics parameters:**
+
+| Parameter | Value |
+|---|---|
+| Anharmonicity δ/2π | 100 MHz |
+| Max drive Ω_max/2π | 50 MHz |
+| Gate time T | 20 ns (Ω_max/δ = 0.5: leakage regime) |
+| PWC steps N | 40 |
+| GRAPE iterations | 200 |
+| Gradient method | Finite-difference (ε = 10⁻⁴) |
+| Warm start | Gaussian I + DRAG Q |
+
+DRAG alone is insufficient at T=20 ns (Ω_max/δ = 0.5): the first-order correction
+overcorrects and reduces fidelity. GRAPE jointly optimises both channels and recovers
+99.88% fidelity with leakage suppressed 1.9× below the plain Gaussian.
